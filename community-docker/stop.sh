@@ -2,8 +2,8 @@
 
 echo "=== Docker 컨테이너 중지 ==="
 
-docker stop community-nginx community-tomcat community-mysql
-docker rm community-nginx community-tomcat community-nginx
+docker stop community-nginx community-tomcat community-mysql 2>/dev/null
+docker rm community-nginx community-tomcat community-mysql 2>/dev/null
 
 echo ""
 echo "✅ 중지 완료!"

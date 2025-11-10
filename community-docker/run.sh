@@ -4,6 +4,9 @@ echo "=== Docker 컨테이너 실행 ==="
 
 PROJECT_DIR=$(pwd)
 
+# 안전장치: 기존 컨테이너가 있으면 삭제
+docker rm -f community-nginx community-tomcat community-mysql 2>/dev/null
+
 # 네트워크 생성
 docker network create community-net 2>/dev/null
 
