@@ -84,7 +84,7 @@ public class PostScrapServlet extends HttpServlet {
                     return false;
                 } else {
                     // 스크랩 추가
-                    String insertSql = "INSERT INTO post_scraps(post_id, user_id) VALUES(?, ?)";
+                    String insertSql = "INSERT INTO post_scraps (post_id, user_id, created_at) VALUES (?, ?, NOW())";
                     try (PreparedStatement insPs = conn.prepareStatement(insertSql)) {
                         insPs.setLong(1, postId);
                         insPs.setLong(2, userId);

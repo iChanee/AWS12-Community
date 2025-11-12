@@ -1,4 +1,59 @@
 <%@ page pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
+<%@ page import="java.sql.*" %>
+<%@ page import="javax.sql.DataSource" %>
+<%@ page import="javax.naming.Context" %>
+<%@ page import="javax.naming.InitialContext" %>
+<%
+  Long uid = (Long) session.getAttribute("userId");
+  String name = (String) session.getAttribute("name");
+  String username = (String) session.getAttribute("username");
+  if (name == null || name.isEmpty()) name = (username != null ? username : "회원");
+  
+  // 활동 카운트 조회
+  int postCount = 0;
+  int commentCount = 0;
+  int scrapCount = 0;
+  
+  if (username != null) {
+    try {
+      Context initContext = new InitialContext();
+      DataSource ds = (DataSource) initContext.lookup("java:comp/env/jdbc/community");
+      
+      try (Connection conn = ds.getConnection()) {
+        // 게시글 수
+        String sql = "SELECT COUNT(*) FROM posts WHERE author_name = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+          pstmt.setString(1, username);
+          try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) postCount = rs.getInt(1);
+          }
+        }
+        
+        // 댓글 수
+        sql = "SELECT COUNT(*) FROM comments WHERE author_name = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+          pstmt.setString(1, username);
+          try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) commentCount = rs.getInt(1);
+          }
+        }
+        
+        // 스크랩 수
+        Long userId = (Long) session.getAttribute("userId");
+
+        sql = "SELECT COUNT(*) FROM post_scraps WHERE user_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+          pstmt.setLong(1, userId);
+          try (ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) scrapCount = rs.getInt(1);
+          }
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+%>
 <!doctype html>
 <html lang="ko">
 <head>
@@ -16,13 +71,6 @@
   <main class="wrap grid">
     <!-- 좌: 프로필 -->
     <aside class="col left">
-      <%
-        Long uid = (Long) session.getAttribute("userId");
-        String name = (String) session.getAttribute("name");
-        String username = (String) session.getAttribute("username");
-        if (name == null || name.isEmpty()) name = (username != null ? username : "회원");
-      %>
-      
       <!-- 프로필 카드 -->
       <section class="profile-card">
         <div class="profile-header">
@@ -38,7 +86,7 @@
         </div>
         
         <div class="profile-actions">
-          <a class="profile-btn" href="/profile">
+          <a class="profile-btn" href="/profile.jsp">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
@@ -59,7 +107,7 @@
       <!-- 내 활동 메뉴 -->
       <nav class="my-activity">
         <h3 class="activity-title">내 활동</h3>
-        <a class="activity-item" href="/my/posts">
+        <a class="activity-item" href="/my-posts.jsp">
           <div class="activity-icon posts">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -67,25 +115,25 @@
             </svg>
           </div>
           <span class="activity-label">내가 쓴 글</span>
-          <span class="activity-count">0</span>
+          <span class="activity-count"><%= postCount %></span>
         </a>
-        <a class="activity-item" href="/my/comments">
+        <a class="activity-item" href="/my-comments.jsp">
           <div class="activity-icon comments">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
             </svg>
           </div>
           <span class="activity-label">댓글 단 글</span>
-          <span class="activity-count">0</span>
+          <span class="activity-count"><%= commentCount %></span>
         </a>
-        <a class="activity-item" href="/my/scraps">
+        <a class="activity-item" href="/my-scraps.jsp">
           <div class="activity-icon scraps">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
             </svg>
           </div>
           <span class="activity-label">내 스크랩</span>
-          <span class="activity-count">0</span>
+          <span class="activity-count"><%= scrapCount %></span>
         </a>
       </nav>
     </aside>
