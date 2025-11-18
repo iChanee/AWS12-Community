@@ -1,9 +1,5 @@
-FROM nginx:alpine
+FROM nginx:1.25.3-alpine
 
-# 기본 설정 제거
-RUN rm /etc/nginx/conf.d/default.conf
-
-# 커스텀 설정 복사
-COPY conf.d/default.conf /etc/nginx/conf.d/
+COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
