@@ -1,9 +1,24 @@
-# ========== Stage 1: Tomcat 다운로드 & 정리 ==========
-FROM alpine:3.19 AS downloader
+# ========== Stage 1: JRE 최소 이미지(jlink) ==========
+FROM amazoncorretto:17-alpine AS jre-builder
+
+# jlink가 --strip-debug 할 때 objcopy(binutils) 필요
+RUN apk add --no-cache binutils && \
+    $JAVA_HOME/bin/jlink \
+      --add-modules java.base,java.logging,java.naming,java.sql,java.xml,java.management,java.desktop,java.security.jgss,java.instrument,jdk.unsupported \
+      --strip-debug \
+      --no-man-pages \
+      --no-header-files \
+      --compress=2 \
+      --output /opt/jre-minimal && \
+    find /opt/jre-minimal -name '*.so' -type f -exec strip --strip-unneeded {} + || true
+
+
+
+# ========== Stage 2: Tomcat 다운로드 & 정리 ==========
+FROM alpine:3.19 AS tomcat-builder
 
 ENV TOMCAT_VERSION=10.1.30
 
-# 버전 패치마다 링크만 수정
 RUN apk add --no-cache curl tar && \
     mkdir -p /opt/tomcat && \
     curl -fSL "https://archive.apache.org/dist/tomcat/tomcat-10/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz" \
@@ -16,47 +31,192 @@ RUN apk add --no-cache curl tar && \
            /opt/tomcat/work/* \
            /opt/tomcat/logs/* \
            /opt/tomcat/bin/*.bat \
+           /opt/tomcat/bin/*.tar.gz \
+           /opt/tomcat/bin/commons-daemon*.jar \
+           /opt/tomcat/bin/tomcat-native.tar.gz \
+           /opt/tomcat/bin/configtest.sh \
+           /opt/tomcat/bin/daemon.sh \
+           /opt/tomcat/bin/digest.sh \
+           /opt/tomcat/bin/setclasspath.sh \
+           /opt/tomcat/bin/startup.sh \
+           /opt/tomcat/bin/shutdown.sh \
+           /opt/tomcat/bin/tool-wrapper.sh \
+           /opt/tomcat/bin/version.sh \
            /opt/tomcat/BUILDING.txt \
            /opt/tomcat/CONTRIBUTING.md \
            /opt/tomcat/README.md \
            /opt/tomcat/RELEASE-NOTES \
-           /opt/tomcat/RUNNING.txt
+           /opt/tomcat/RUNNING.txt \
+           /opt/tomcat/NOTICE \
+           /opt/tomcat/LICENSE
 
-COPY build/community.war /opt/tomcat/webapps/ROOT.war
 
-COPY webapp/WEB-INF/lib/mysql-connector-j-8.0.33.jar /opt/tomcat/lib/
-
-# ========== Stage 2: 커스텀 JRE 생성 ==========
-FROM amazoncorretto:17-alpine AS jre-builder
-
-RUN apk add --no-cache binutils
-
-RUN $JAVA_HOME/bin/jlink \
-    --add-modules java.base,java.logging,java.naming,java.management,java.rmi,java.sql,java.xml,jdk.unsupported,java.desktop,java.security.jgss,java.instrument \
-    --strip-debug \
-    --no-man-pages \
-    --no-header-files \
-    --compress=2 \
-    --output /opt/jre-minimal
-
-# ========== Stage 3: 최종 런타임 ==========
+# ========== Stage 3: 런타임 ==========
 FROM alpine:3.19
 
 ENV JAVA_HOME=/opt/jre-minimal
 ENV CATALINA_HOME=/usr/local/tomcat
 ENV PATH=$JAVA_HOME/bin:$CATALINA_HOME/bin:$PATH
 
-# Bash만 설치
-RUN apk add --no-cache bash
+# bash 없이 gcompat만
+RUN apk add --no-cache gcompat
 
-# 커스텀 JRE 복사
+# Stage 1에서 만든 최소 JRE 복사
 COPY --from=jre-builder /opt/jre-minimal $JAVA_HOME
 
-# Tomcat 복사
-COPY --from=downloader /opt/tomcat $CATALINA_HOME
+# Stage 2에서 정리된 Tomcat 복사
+COPY --from=tomcat-builder /opt/tomcat $CATALINA_HOME
+
+# 자주 바뀌는 부분 (WAR, 드라이버)
+COPY build/community.war $CATALINA_HOME/webapps/ROOT.war
+COPY webapp/WEB-INF/lib/mysql-connector-j-8.0.33.jar $CATALINA_HOME/lib/
 
 EXPOSE 8080
-CMD ["catalina.sh", "run"]
+
+CMD ["java", \
+     "-Djava.util.logging.config.file=/usr/local/tomcat/conf/logging.properties", \
+     "-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager", \
+     "-Djdk.tls.ephemeralDHKeySize=2048", \
+     "-Djava.protocol.handler.pkgs=org.apache.catalina.webresources", \
+     "-Dorg.apache.catalina.security.SecurityListener.UMASK=0027", \
+     "--add-opens=java.base/java.lang=ALL-UNNAMED", \
+     "--add-opens=java.base/java.io=ALL-UNNAMED", \
+     "--add-opens=java.base/java.util=ALL-UNNAMED", \
+     "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", \
+     "-classpath", "/usr/local/tomcat/bin/bootstrap.jar:/usr/local/tomcat/bin/tomcat-juli.jar", \
+     "-Dcatalina.base=/usr/local/tomcat", \
+     "-Dcatalina.home=/usr/local/tomcat", \
+     "-Djava.io.tmpdir=/usr/local/tomcat/temp", \
+     "org.apache.catalina.startup.Bootstrap", \
+     "start"]
+
+# ===============================================================================================================
+# ===============================================================================================================
+# ===============================================================================================================
+# ===============================================================================================================
+
+# # ========== Stage 1: 빌드 (통합) ==========
+# FROM amazoncorretto:17-alpine AS builder
+
+# ENV TOMCAT_VERSION=10.1.30
+
+# # Tomcat 다운로드 & 정리
+# RUN apk add --no-cache curl tar binutils && \
+#     mkdir -p /opt/tomcat && \
+#     curl -fSL "https://archive.apache.org/dist/tomcat/tomcat-10/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz" \
+#       -o /tmp/tomcat.tar.gz && \
+#     tar -xzf /tmp/tomcat.tar.gz -C /opt/tomcat --strip-components=1 && \
+#     rm -rf /tmp/tomcat.tar.gz \
+#            /opt/tomcat/webapps/* \
+#            /opt/tomcat/webapps.dist \
+#            /opt/tomcat/temp/* \
+#            /opt/tomcat/work/* \
+#            /opt/tomcat/logs/* \
+#            /opt/tomcat/bin/*.bat \
+#            /opt/tomcat/bin/*.tar.gz \
+#            /opt/tomcat/bin/commons-daemon*.jar \
+#            /opt/tomcat/BUILDING.txt \
+#            /opt/tomcat/CONTRIBUTING.md \
+#            /opt/tomcat/README.md \
+#            /opt/tomcat/RELEASE-NOTES \
+#            /opt/tomcat/RUNNING.txt
+
+# # 커스텀 JRE 생성 (최소 모듈)
+# RUN $JAVA_HOME/bin/jlink \
+#     --add-modules java.base,java.logging,java.naming,java.sql,java.xml,java.management,java.desktop,java.security.jgss,java.instrument,jdk.unsupported \
+#     --strip-debug \
+#     --no-man-pages \
+#     --no-header-files \
+#     --compress=2 \
+#     --output /opt/jre-minimal
+
+# # WAR & 드라이버
+# COPY build/community.war /opt/tomcat/webapps/ROOT.war
+# COPY webapp/WEB-INF/lib/mysql-connector-j-8.0.33.jar /opt/tomcat/lib/
+
+# # ========== Stage 2: 최종 런타임 ==========
+# FROM alpine:3.19
+
+# ENV JAVA_HOME=/opt/jre-minimal
+# ENV CATALINA_HOME=/usr/local/tomcat
+# ENV PATH=$JAVA_HOME/bin:$CATALINA_HOME/bin:$PATH
+
+# # 최소 패키지 (gcompat 추가)
+# RUN apk add --no-cache bash gcompat
+
+# # JRE & Tomcat
+# COPY --from=builder /opt/jre-minimal $JAVA_HOME
+# COPY --from=builder /opt/tomcat $CATALINA_HOME
+
+# EXPOSE 8080
+# CMD ["catalina.sh", "run"]
+
+
+# ===============================================================================================================
+# ===============================================================================================================
+# ===============================================================================================================
+# ===============================================================================================================
+
+
+# # ========== Stage 1: Tomcat 다운로드 & 정리 ==========
+# FROM alpine:3.19 AS downloader
+
+# ENV TOMCAT_VERSION=10.1.30
+
+# # 버전 패치마다 링크만 수정
+# RUN apk add --no-cache curl tar && \
+#     mkdir -p /opt/tomcat && \
+#     curl -fSL "https://archive.apache.org/dist/tomcat/tomcat-10/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz" \
+#       -o /tmp/tomcat.tar.gz && \
+#     tar -xzf /tmp/tomcat.tar.gz -C /opt/tomcat --strip-components=1 && \
+#     rm -rf /tmp/tomcat.tar.gz \
+#            /opt/tomcat/webapps/* \
+#            /opt/tomcat/webapps.dist \
+#            /opt/tomcat/temp/* \
+#            /opt/tomcat/work/* \
+#            /opt/tomcat/logs/* \
+#            /opt/tomcat/bin/*.bat \
+#            /opt/tomcat/BUILDING.txt \
+#            /opt/tomcat/CONTRIBUTING.md \
+#            /opt/tomcat/README.md \
+#            /opt/tomcat/RELEASE-NOTES \
+#            /opt/tomcat/RUNNING.txt
+
+# COPY build/community.war /opt/tomcat/webapps/ROOT.war
+
+# COPY webapp/WEB-INF/lib/mysql-connector-j-8.0.33.jar /opt/tomcat/lib/
+
+# # ========== Stage 2: 커스텀 JRE 생성 ==========
+# FROM amazoncorretto:17-alpine AS jre-builder
+
+# RUN apk add --no-cache binutils
+
+# RUN $JAVA_HOME/bin/jlink \
+#     --add-modules java.base,java.logging,java.naming,java.management,java.rmi,java.sql,java.xml,jdk.unsupported,java.desktop,java.security.jgss,java.instrument \
+#     --strip-debug \
+#     --no-man-pages \
+#     --no-header-files \
+#     --compress=2 \
+#     --output /opt/jre-minimal
+
+# # ========== Stage 3: 최종 런타임 ==========
+# FROM alpine:3.19
+
+# ENV JAVA_HOME=/opt/jre-minimal
+# ENV CATALINA_HOME=/usr/local/tomcat
+# ENV PATH=$JAVA_HOME/bin:$CATALINA_HOME/bin:$PATH
+
+# # Bash만 설치
+# RUN apk add --no-cache bash
+
+# # 커스텀 JRE 복사
+# COPY --from=jre-builder /opt/jre-minimal $JAVA_HOME
+
+# # Tomcat 복사
+# COPY --from=downloader /opt/tomcat $CATALINA_HOME
+
+# EXPOSE 8080
+# CMD ["catalina.sh", "run"]
 
 
 # ===============================================================================================================
