@@ -3,27 +3,76 @@ kind: Deployment
 metadata:
   name: nginx-deployment
   namespace: web
+  labels:
+    app: nginx-web
 spec:
   replicas: 3
   selector:
     matchLabels:
       app: nginx-web
+
+  # RollingUpdate 
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+
   template:
     metadata:
       labels:
         app: nginx-web
+
     spec:
-      containers:
-      - name: nginx-container
-        image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-nginx:v1.2
-        ports:
-        - containerPort: 80
-        resources:
-          requests:
-            cpu: 250m
-            memory: 64Mi
-          limits:
-            cpu: 250m
-            memory: 64Mi
       imagePullSecrets:
       - name: ecr-secret
+      
+      containers:
+      - name: nginx-container
+        image: 012079073638.dkr.ecr.ap-northeast-2.amazonaws.com/project-nginx:1.0
+        ports:
+        - containerPort: 80
+
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+
+        resources:
+          requests:
+            cpu: 750m
+            memory: 192Mi
+          limits:
+            cpu: 750m
+            memory: 192Mi
+
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: nginx-web
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:            
+                  app: nginx-web
+              topologyKey: kubernetes.io/hostname
+
+      
