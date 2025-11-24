@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: web-ingress
   namespace: web
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: "community_sticky"
 spec:
   ingressClassName: nginx
   rules:

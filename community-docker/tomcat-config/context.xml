@@ -6,8 +6,8 @@
               maxTotal="20"
               maxIdle="10"
               maxWaitMillis="10000"
-              username="appuser"
-              password="apppass"
+              username="${DB_USER}"
+              password="${DB_PASSWORD}"
               driverClassName="com.mysql.cj.jdbc.Driver"
-              url="jdbc:mysql://community-mysql:3306/community?useUnicode=true&amp;characterEncoding=utf8&amp;useSSL=false&amp;allowPublicKeyRetrieval=true"/>
+              url="jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useUnicode=true&amp;characterEncoding=utf8&amp;useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC"/>
 </Context>

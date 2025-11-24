@@ -1,7 +1,6 @@
 # ========== Stage 1: JRE 최소 이미지(jlink) ==========
 FROM amazoncorretto:17-alpine AS jre-builder
 
-# jlink가 --strip-debug 할 때 objcopy(binutils) 필요
 RUN apk add --no-cache binutils && \
     $JAVA_HOME/bin/jlink \
       --add-modules java.base,java.logging,java.naming,java.sql,java.xml,java.management,java.desktop,java.security.jgss,java.instrument,jdk.unsupported \
@@ -11,7 +10,6 @@ RUN apk add --no-cache binutils && \
       --compress=2 \
       --output /opt/jre-minimal && \
     find /opt/jre-minimal -name '*.so' -type f -exec strip --strip-unneeded {} + || true
-
 
 
 # ========== Stage 2: Tomcat 다운로드 & 정리 ==========
@@ -37,7 +35,7 @@ RUN apk add --no-cache curl tar && \
            /opt/tomcat/bin/configtest.sh \
            /opt/tomcat/bin/daemon.sh \
            /opt/tomcat/bin/digest.sh \
-           /opt/tomcat/bin/setclasspath.sh \
+           # /opt/tomcat/bin/setclasspath.sh \
            /opt/tomcat/bin/startup.sh \
            /opt/tomcat/bin/shutdown.sh \
            /opt/tomcat/bin/tool-wrapper.sh \
@@ -58,37 +56,29 @@ ENV JAVA_HOME=/opt/jre-minimal
 ENV CATALINA_HOME=/usr/local/tomcat
 ENV PATH=$JAVA_HOME/bin:$CATALINA_HOME/bin:$PATH
 
-# bash 없이 gcompat만
 RUN apk add --no-cache gcompat
 
-# Stage 1에서 만든 최소 JRE 복사
+# Stage 1 JRE 복사
 COPY --from=jre-builder /opt/jre-minimal $JAVA_HOME
 
-# Stage 2에서 정리된 Tomcat 복사
+# Stage 2 Tomcat 복사
 COPY --from=tomcat-builder /opt/tomcat $CATALINA_HOME
 
-# 자주 바뀌는 부분 (WAR, 드라이버)
+# Tomcat 전역 context.xml 복사 (JNDI DataSource 설정)
+COPY tomcat-config/context.xml $CATALINA_HOME/conf/context.xml
+
+# K8s env → JVM -D 옵션으로 넘기는 setenv.sh 복사
+COPY setenv.sh $CATALINA_HOME/bin/setenv.sh
+RUN chmod +x $CATALINA_HOME/bin/setenv.sh
+
+# WAR + JDBC 드라이버 복사
 COPY build/community.war $CATALINA_HOME/webapps/ROOT.war
 COPY webapp/WEB-INF/lib/mysql-connector-j-8.0.33.jar $CATALINA_HOME/lib/
 
 EXPOSE 8080
 
-CMD ["java", \
-     "-Djava.util.logging.config.file=/usr/local/tomcat/conf/logging.properties", \
-     "-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager", \
-     "-Djdk.tls.ephemeralDHKeySize=2048", \
-     "-Djava.protocol.handler.pkgs=org.apache.catalina.webresources", \
-     "-Dorg.apache.catalina.security.SecurityListener.UMASK=0027", \
-     "--add-opens=java.base/java.lang=ALL-UNNAMED", \
-     "--add-opens=java.base/java.io=ALL-UNNAMED", \
-     "--add-opens=java.base/java.util=ALL-UNNAMED", \
-     "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED", \
-     "-classpath", "/usr/local/tomcat/bin/bootstrap.jar:/usr/local/tomcat/bin/tomcat-juli.jar", \
-     "-Dcatalina.base=/usr/local/tomcat", \
-     "-Dcatalina.home=/usr/local/tomcat", \
-     "-Djava.io.tmpdir=/usr/local/tomcat/temp", \
-     "org.apache.catalina.startup.Bootstrap", \
-     "start"]
+CMD ["/usr/local/tomcat/bin/catalina.sh", "run"]
+
 
 # ===============================================================================================================
 # ===============================================================================================================
