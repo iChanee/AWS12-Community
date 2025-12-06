@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: community.local
+  - host: ichane.store
     http:
       paths:
       - path: /
