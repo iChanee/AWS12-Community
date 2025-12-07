@@ -10,7 +10,7 @@ spec:
     name: tomcat-deployment
 
   minReplicas: 3
-  maxReplicas: 10
+  maxReplicas: 9
 
   metrics:
   - type: Resource
