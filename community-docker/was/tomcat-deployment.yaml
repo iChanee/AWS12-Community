@@ -23,6 +23,8 @@ spec:
         app: tomcat-was
 
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
         - name: tomcat-container
           image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-tomcat:v2.1
@@ -34,25 +36,25 @@ spec:
             httpGet:
               path: /
               port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 5
+            initialDelaySeconds: 80
+            periodSeconds: 20
+            timeoutSeconds: 15
 
           readinessProbe:
             httpGet:
               path: /
               port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 5
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
 
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 250m
+              memory: 512Mi
             limits:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 250m
+              memory: 512Mi
 
           env:
             - name: DB_HOST
@@ -99,12 +101,6 @@ spec:
             - weight: 100
               podAffinityTerm:
                 labelSelector:
-                  matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                        - tomcat-was
+                  matchLabels:
+                    app: tomcat-was
                 topologyKey: kubernetes.io/hostname
-
-      imagePullSecrets:
-        - name: ecr-secret
