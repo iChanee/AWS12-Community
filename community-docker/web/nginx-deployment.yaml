@@ -34,7 +34,7 @@ spec:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 5
           timeoutSeconds: 5
 
@@ -42,16 +42,16 @@ spec:
           httpGet:
             path: /
             port: 80
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20
           periodSeconds: 5
           timeoutSeconds: 5
 
         resources:
           requests:
-            cpu: 250m
+            cpu: 100m
             memory: 64Mi
           limits:
-            cpu: 250m
+            cpu: 100m
             memory: 64Mi
 
       topologySpreadConstraints:
