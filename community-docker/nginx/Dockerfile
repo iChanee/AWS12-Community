@@ -1,7 +1,12 @@
-FROM nginx:1.14-alpine
+FROM alpine:3.20
   
-COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache nginx
 
-EXPOSE 80
+RUN rm -rf /usr/share/nginx/html/* \
+    /var/log/nginx/* \
+    /etc/nginx/*.default \
+    /etc/nginx/conf.d/default.conf
+
+COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
 
 CMD ["nginx", "-g", "daemon off;"]
