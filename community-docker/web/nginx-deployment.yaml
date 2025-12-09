@@ -35,16 +35,16 @@ spec:
             path: /
             port: 80
           initialDelaySeconds: 30
-          periodSeconds: 5
-          timeoutSeconds: 5
+          periodSeconds: 15
+          timeoutSeconds: 10
 
         readinessProbe:
           httpGet:
             path: /
             port: 80
           initialDelaySeconds: 20
-          periodSeconds: 5
-          timeoutSeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 10
 
         resources:
           requests:
