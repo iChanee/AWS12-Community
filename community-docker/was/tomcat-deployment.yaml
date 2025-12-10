@@ -15,19 +15,22 @@ spec:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   template:
     metadata:
       labels:
         app: tomcat-was
+
     spec:
       imagePullSecrets:
         - name: ecr-secret
+
       containers:
         - name: tomcat-container
           image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-tomcat:v2.1
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
-          imagePullPolicy: Always          
 
           livenessProbe:
             httpGet:
