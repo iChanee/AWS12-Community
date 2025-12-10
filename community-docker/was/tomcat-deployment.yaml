@@ -37,7 +37,7 @@ spec:
               path: /
               port: 8080
             initialDelaySeconds: 80
-            periodSeconds: 20
+            periodSeconds: 30
             timeoutSeconds: 15
 
           readinessProbe:
@@ -45,7 +45,7 @@ spec:
               path: /
               port: 8080
             initialDelaySeconds: 60
-            periodSeconds: 15
+            periodSeconds: 30
             timeoutSeconds: 10
 
           resources:
