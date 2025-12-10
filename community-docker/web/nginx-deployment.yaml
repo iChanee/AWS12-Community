@@ -22,11 +22,13 @@ spec:
         app: nginx-web
 
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       containers:
-      - name: nginx-container
-        image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-nginx:v3.6
-        ports:
-        - containerPort: 80
+        - name: nginx-container
+          image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-nginx:v3.6
+          ports:
+          - containerPort: 80
 
         livenessProbe:
           httpGet:
@@ -69,6 +71,3 @@ spec:
                 matchLabels:                 #matchLabels로 변경
                   app: nginx-web
               topologyKey: kubernetes.io/hostname
-
-      imagePullSecrets:
-      - name: ecr-secret
