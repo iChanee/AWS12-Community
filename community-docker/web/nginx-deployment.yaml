@@ -24,50 +24,51 @@ spec:
     spec:
       imagePullSecrets:
         - name: ecr-secret
+
       containers:
         - name: nginx-container
           image: 311278774159.dkr.ecr.ap-northeast-2.amazonaws.com/community-nginx:v3.6
           ports:
-          - containerPort: 80
+            - containerPort: 80
 
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 15
-          timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
 
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 20
-          periodSeconds: 10
-          timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 10
 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 64Mi
-          limits:
-            cpu: 100m
-            memory: 64Mi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
 
       topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: ScheduleAnyway
-        labelSelector:
-          matchLabels:
-            app: nginx-web
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: nginx-web
 
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchLabels:                 #matchLabels로 변경
-                  app: nginx-web
-              topologyKey: kubernetes.io/hostname
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:  # matchLabels로 변경
+                    app: nginx-web
+                topologyKey: kubernetes.io/hostname
