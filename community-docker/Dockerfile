@@ -35,7 +35,6 @@ RUN apk add --no-cache curl tar && \
            /opt/tomcat/bin/configtest.sh \
            /opt/tomcat/bin/daemon.sh \
            /opt/tomcat/bin/digest.sh \
-           # /opt/tomcat/bin/setclasspath.sh \
            /opt/tomcat/bin/startup.sh \
            /opt/tomcat/bin/shutdown.sh \
            /opt/tomcat/bin/tool-wrapper.sh \
@@ -46,6 +45,7 @@ RUN apk add --no-cache curl tar && \
            /opt/tomcat/RELEASE-NOTES \
            /opt/tomcat/RUNNING.txt \
            /opt/tomcat/NOTICE \
+           # /opt/tomcat/bin/setclasspath.sh \
            /opt/tomcat/LICENSE
 
 
