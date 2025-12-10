@@ -10,8 +10,6 @@ spec:
   selector:
     matchLabels:
       app: nginx-web
-
-  # RollingUpdate는 여기 위치가 맞음
   strategy:
     type: RollingUpdate
     rollingUpdate:
